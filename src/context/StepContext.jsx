@@ -74,8 +74,8 @@ export function StepProvider({ children }) {
     const today = new Date().toISOString().split('T')[0];
     localStorage.setItem('c4h_unsynced_steps', JSON.stringify({ date: today, steps: unsyncedRef.current }));
     
-    // Auto sync when reaching a multiple of 20, or after 10s of inactivity
-    if (unsyncedRef.current >= 20) {
+    // Auto sync instantly on every step for 10ms-like live feeling
+    if (unsyncedRef.current >= 1) {
       pushStepsToServer();
     } else {
       triggerAutoSync();
