@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useHealth } from '../hooks/useHealth';
-import { Footprints, Flame, Beef, Wheat, Droplets, LogOut, ChevronRight, TrendingUp } from 'lucide-react';
+import { Footprints, Flame, Beef, Wheat, Droplets, LogOut, ChevronRight, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
 const CALORIE_GOAL = 2000;
 const STEP_GOAL    = 10000;
@@ -31,29 +31,35 @@ function Ring({ value, max, color, size = 120, strokeWidth = 10, children }) {
 }
 
 export default function Dashboard() {
-  const { user, logout }        = useAuth();
+  const { user, logout }            = useAuth();
   const { healthUpdate, connected } = useWebSocket();
-  const { meals, stepHistory, totals, fetchMeals, fetchStepHistory } = useHealth();
-  const navigate = useNavigate();
+  const { meals, stepHistory, todaySteps, totals, error, fetchMeals, fetchStepHistory } = useHealth();
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
-  const [todaySteps, setTodaySteps] = useState(0);
+  const refresh = useCallback(() => {
+    fetchMeals();
+    fetchStepHistory(7);
+  }, [fetchMeals, fetchStepHistory]);
 
-  // Load data on mount
-  useEffect(() => { fetchMeals(); fetchStepHistory(7); }, []);
+  // Fetch on mount
+  useEffect(() => { refresh(); }, []);
 
-  // Sync live WS health updates
+  // Re-fetch when navigating back to this tab
+  useEffect(() => { if (location.pathname === '/') refresh(); }, [location.pathname]);
+
+  // Re-fetch when browser tab becomes visible again
   useEffect(() => {
-    if (healthUpdate?.kind === 'steps') setTodaySteps(prev => Math.max(prev, Number(healthUpdate.data.steps) || 0));
-    if (healthUpdate?.kind === 'meal') fetchMeals();
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
+  // Live WS health updates
+  useEffect(() => {
+    if (!healthUpdate) return;
+    if (healthUpdate.kind === 'steps' || healthUpdate.kind === 'meal') refresh();
   }, [healthUpdate]);
-
-  // Derive latest steps from history
-  useEffect(() => {
-    if (stepHistory.length > 0) {
-      const last = stepHistory[stepHistory.length - 1];
-      setTodaySteps(Number(last.steps) || 0);
-    }
-  }, [stepHistory]);
 
   const calPct   = Math.min(totals.calories / CALORIE_GOAL, 1);
   const stepPct  = Math.min(todaySteps / STEP_GOAL, 1);
@@ -69,6 +75,23 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      {/* Server error banner */}
+      {error && (
+        <div style={{
+          padding: '10px 14px', marginBottom: 12,
+          borderRadius: 10, background: 'rgba(245,158,11,0.08)',
+          border: '1px solid rgba(245,158,11,0.25)',
+          fontSize: '0.78rem', color: 'var(--accent-amber)',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <AlertCircle size={14} style={{ flexShrink:0 }}/>
+          <span style={{ flex:1 }}>{error}</span>
+          <button onClick={refresh} style={{ background:'none', border:'none', color:'var(--accent-amber)', cursor:'pointer' }}>
+            <RefreshCw size={14}/>
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex-between page-header">
         <div>
