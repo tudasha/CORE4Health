@@ -1,0 +1,18 @@
+# Logs
+node_modules/
+dist/
+.env
+
+# Capacitor Android build outputs
+android/app/build/
+android/.gradle/
+android/local.properties
+android/build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

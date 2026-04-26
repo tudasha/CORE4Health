@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Core4Health</string>
+    <string name="title_activity_main">Core4Health</string>
+    <string name="package_name">com.core4health.app</string>
+    <string name="custom_url_scheme">com.core4health.app</string>
+</resources>
