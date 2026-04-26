@@ -17,11 +17,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Java 17 (required by Gradle) ────────────────────────
-      - name: Set up JDK 17
+      # ── 2. Java 21 (required by Gradle 8.11+) ────────────────────────
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       # ── 3. Node 20 ─────────────────────────────────────────────
