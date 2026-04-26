@@ -140,6 +140,40 @@ export function useHealth() {
     } catch { return null; }
   }, []);
 
+  // ── AI & Barcode (Core4Health new endpoints) ─────────────────
+
+  const estimateWithAI = useCallback(async (text, imageBase64) => {
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/food/ai-estimate`, {
+        method: 'POST',
+        headers: authHeader(),
+        body: JSON.stringify({ text, imageBase64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || `Server error ${res.status}` };
+      }
+      return { success: true, estimation: data.estimation };
+    } catch (err) {
+      return { success: false, error: 'Network error estimating macros' };
+    }
+  }, []);
+
+  const searchBarcode = useCallback(async (barcode) => {
+    setError(null);
+    try {
+      const res = await fetch(`${API}/api/food/barcode/${barcode}`, { headers: authHeader() });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || `Server error ${res.status}` };
+      }
+      return { success: true, food: data.food };
+    } catch (err) {
+      return { success: false, error: 'Network error searching barcode' };
+    }
+  }, []);
+
   // ── Computed totals ──────────────────────────────────────────
 
   const totals = meals.reduce(
@@ -156,7 +190,7 @@ export function useHealth() {
     meals, stepHistory, todaySteps, loading, error, totals,
     fetchMeals, addMeal, deleteMeal,
     fetchStepHistory, syncSteps,
-    searchFood, getFoodDetails,
+    searchFood, getFoodDetails, estimateWithAI, searchBarcode,
     clearError: () => setError(null),
   };
 }

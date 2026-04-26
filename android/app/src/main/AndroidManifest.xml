@@ -43,4 +43,7 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+
+    <!-- Core4Health: Camera and Barcode Scanning -->
+    <uses-permission android:name="android.permission.CAMERA" />
 </manifest>
