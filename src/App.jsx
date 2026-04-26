@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import BottomNav from './components/BottomNav';
+import TopNav from './components/TopNav';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import StepCounter from './pages/StepCounter';
@@ -21,13 +21,13 @@ function ProtectedRoute({ children }) {
 function AppLayout() {
   return (
     <>
+      <TopNav />
       <Routes>
         <Route path="/"      element={<Dashboard />} />
         <Route path="/steps" element={<StepCounter />} />
         <Route path="/food"  element={<FoodLog />} />
         <Route path="*"      element={<Navigate to="/" replace />} />
       </Routes>
-      <BottomNav />
     </>
   );
 }
