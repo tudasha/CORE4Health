@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useHealth } from '../hooks/useHealth';
+import { useSteps } from '../context/StepContext';
 import { Footprints, Flame, Beef, Wheat, Droplets, LogOut, ChevronRight, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 
 const CALORIE_GOAL = 2000;
@@ -33,7 +34,8 @@ function Ring({ value, max, color, size = 120, strokeWidth = 10, children }) {
 export default function Dashboard() {
   const { user, logout }            = useAuth();
   const { healthUpdate, connected } = useWebSocket();
-  const { meals, stepHistory, todaySteps, totals, error, fetchMeals, fetchStepHistory } = useHealth();
+  const { meals, stepHistory, totals, error, fetchMeals, fetchStepHistory } = useHealth();
+  const { totalToday: todaySteps }  = useSteps();
   const navigate  = useNavigate();
   const location  = useLocation();
 

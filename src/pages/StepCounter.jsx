@@ -1,47 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { Motion } from '@capacitor/motion';
-import { Footprints, Play, Pause, RotateCcw, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Footprints, Play, Pause, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 import { useHealth } from '../hooks/useHealth';
+import { useSteps } from '../context/StepContext';
 
 const STEP_GOAL = 10000;
-
-// ── Accelerometer-based step detection ───────────────────────
-function useStepDetector(active) {
-  const [accelSteps, setAccelSteps] = useState(0);
-  const lastAcc   = useRef({ x: 0, y: 0, z: 0 });
-  const lastPeak  = useRef(false);
-  const threshold = 1.5;
-
-  useEffect(() => {
-    if (!active) return;
-    let handler;
-    (async () => {
-      try {
-        handler = await Motion.addListener('accel', ({ acceleration }) => {
-          if (!acceleration) return;
-          const { x, y, z } = acceleration;
-          const dx = x - lastAcc.current.x;
-          const dy = y - lastAcc.current.y;
-          const dz = z - lastAcc.current.z;
-          const mag = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-          if (mag > threshold && !lastPeak.current) {
-            lastPeak.current = true;
-            setAccelSteps(s => s + 1);
-          } else if (mag < threshold * 0.4) {
-            lastPeak.current = false;
-          }
-          lastAcc.current = { x, y, z };
-        });
-      } catch {
-        console.warn('[StepCounter] Motion API unavailable — use manual input');
-      }
-    })();
-    return () => { handler?.remove?.(); };
-  }, [active]);
-
-  return { accelSteps, resetAccel: () => setAccelSteps(0) };
-}
 
 // ── Toast helper ──────────────────────────────────────────────
 function Toast({ message, type = 'success', onDone }) {
@@ -61,16 +23,11 @@ function Toast({ message, type = 'success', onDone }) {
 }
 
 export default function StepCounter() {
-  const [active, setActive]       = useState(false);
   const [manualInput, setManualInput] = useState('');
-  const [manualTotal, setManualTotal] = useState(0);
-  const [toast, setToast]         = useState(null); // { message, type }
-  const [saving, setSaving]       = useState(false);
-
-  const { accelSteps, resetAccel } = useStepDetector(active);
-  const { stepHistory, todaySteps: serverSteps, fetchStepHistory, syncSteps, error } = useHealth();
-
-  const allSteps = manualTotal + accelSteps;
+  const [toast, setToast]         = useState(null);
+  
+  const { stepHistory, fetchStepHistory, error } = useHealth();
+  const { totalToday, active, setActive, addSteps } = useSteps();
 
   useEffect(() => { fetchStepHistory(7); }, []);
 
@@ -79,51 +36,18 @@ export default function StepCounter() {
     if (error) setToast({ message: error, type: 'error' });
   }, [error]);
 
-  const reset = () => {
-    setManualTotal(0);
-    resetAccel();
-    setToast(null);
-  };
-
-  // "Add" button: adds manual steps AND saves to server immediately
-  const addAndSave = async () => {
+  // "Add" button: adds manual steps
+  const handleAddManual = () => {
     const n = parseInt(manualInput);
     if (isNaN(n) || n <= 0) return;
-
-    const newTotal = manualTotal + accelSteps + n;
-    setManualTotal(prev => prev + n);
+    addSteps(n);
     setManualInput('');
-    setSaving(true);
-
-    const result = await syncSteps(newTotal, STEP_GOAL);
-    setSaving(false);
-
-    if (result?.success) {
-      setToast({ message: `✓ ${newTotal.toLocaleString()} steps saved to server`, type: 'success' });
-      fetchStepHistory(7); // refresh chart
-    } else {
-      setToast({ message: result?.error || 'Failed to save', type: 'error' });
-    }
+    setToast({ message: `✓ ${n.toLocaleString()} steps added`, type: 'success' });
   };
 
-  // Also save when Enter pressed
-  const handleKeyDown = (e) => { if (e.key === 'Enter') addAndSave(); };
+  const handleKeyDown = (e) => { if (e.key === 'Enter') handleAddManual(); };
 
-  // Manual save button (for accel-counted steps)
-  const saveAccel = async () => {
-    if (allSteps === 0) return;
-    setSaving(true);
-    const result = await syncSteps(allSteps, STEP_GOAL);
-    setSaving(false);
-    if (result?.success) {
-      setToast({ message: `✓ ${allSteps.toLocaleString()} steps saved`, type: 'success' });
-      fetchStepHistory(7);
-    } else {
-      setToast({ message: result?.error || 'Failed to save', type: 'error' });
-    }
-  };
-
-  const pct  = Math.min(allSteps / STEP_GOAL, 1);
+  const pct  = Math.min(totalToday / STEP_GOAL, 1);
   const size = 200;
   const sw   = 15;
   const r    = (size - sw) / 2;
@@ -144,9 +68,7 @@ export default function StepCounter() {
       <div className="page-header">
         <div className="page-title">Step Counter</div>
         <div className="page-subtitle">
-          {serverSteps > 0
-            ? `${serverSteps.toLocaleString()} steps saved today on server`
-            : 'Add steps manually or use accelerometer'}
+          Background counting is {active ? 'active' : 'paused'}
         </div>
       </div>
 
@@ -166,7 +88,7 @@ export default function StepCounter() {
           </svg>
           <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap: 2 }}>
             <div style={{ fontSize: '2.6rem', fontWeight: 900, color: pct >= 1 ? 'var(--accent-teal)' : 'var(--text-primary)', lineHeight: 1, letterSpacing: '-0.04em' }}>
-              {allSteps.toLocaleString()}
+              {totalToday.toLocaleString()}
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>of {STEP_GOAL.toLocaleString()}</div>
             <div style={{ marginTop: 4 }}>
@@ -191,31 +113,14 @@ export default function StepCounter() {
             id="btn-toggle-steps"
             style={{ flex:1 }}
           >
-            {active ? <><Pause size={18}/> Pause</> : <><Play size={18}/> Start</>}
+            {active ? <><Pause size={18}/> Pause Tracker</> : <><Play size={18}/> Resume Tracker</>}
           </button>
-          <button className="btn btn-ghost btn-icon" onClick={reset} id="btn-reset-steps">
-            <RotateCcw size={16}/>
-          </button>
-          {active && (
-            <button
-              className="btn btn-ghost"
-              onClick={saveAccel}
-              disabled={saving || allSteps === 0}
-              id="btn-save-accel"
-              style={{ width:'auto', padding:'0 14px', fontSize:'0.8rem' }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          )}
         </div>
       </div>
 
-      {/* ── Manual entry — saves immediately on Add ── */}
+      {/* ── Manual entry ── */}
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <div className="section-label">Add steps manually</div>
-        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', marginBottom:10 }}>
-          Type a number and tap <strong style={{ color:'var(--accent-green)' }}>Add & Save</strong> — syncs to server right away.
-        </div>
         <div style={{ display:'flex', gap:10 }}>
           <input
             id="manual-steps-input"
@@ -229,12 +134,12 @@ export default function StepCounter() {
           />
           <button
             className="btn btn-primary"
-            onClick={addAndSave}
-            disabled={saving || !manualInput}
+            onClick={handleAddManual}
+            disabled={!manualInput}
             id="btn-add-manual"
             style={{ width:'auto', padding:'0 16px', flexShrink:0 }}
           >
-            {saving ? 'Saving…' : 'Add & Save'}
+            Add
           </button>
         </div>
       </div>
@@ -242,9 +147,9 @@ export default function StepCounter() {
       {/* Stats row */}
       <div className="grid-3" style={{ marginBottom: 12 }}>
         {[
-          { label: 'Steps Left',  value: Math.max(STEP_GOAL - allSteps, 0).toLocaleString(), color: 'var(--accent-purple)' },
-          { label: 'kcal Burned', value: Math.round(allSteps * 0.04),                         color: 'var(--accent-amber)' },
-          { label: 'Km Walked',   value: (allSteps * 0.00078).toFixed(2),                      color: 'var(--accent-teal)' },
+          { label: 'Steps Left',  value: Math.max(STEP_GOAL - totalToday, 0).toLocaleString(), color: 'var(--accent-purple)' },
+          { label: 'kcal Burned', value: Math.round(totalToday * 0.04),                         color: 'var(--accent-amber)' },
+          { label: 'Km Walked',   value: (totalToday * 0.00078).toFixed(2),                      color: 'var(--accent-teal)' },
         ].map(({ label, value, color }) => (
           <div key={label} className="stat-chip">
             <div className="stat-chip-value" style={{ color }}>{value}</div>
@@ -274,9 +179,6 @@ export default function StepCounter() {
               ))}
             </div>
         }
-        {stepHistory.length > 0 && (
-          <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:8, textAlign:'center' }}>Teal = goal reached</div>
-        )}
       </div>
     </div>
   );

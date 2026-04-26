@@ -32,19 +32,23 @@ function AppLayout() {
   );
 }
 
+import { StepProvider } from './context/StepContext';
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <StepProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </StepProvider>
     </AuthProvider>
   );
 }
