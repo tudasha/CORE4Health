@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
       const data = await res.json();
       if (res.ok) { localStorage.setItem('c4h_token', data.token); setUser(data.user); return { success: true }; }
       return { success: false, error: data.error || 'Login failed' };
-    } catch { return { success: false, error: 'Cannot reach server. Check your connection.' }; }
+    } catch (err) { return { success: false, error: 'Cannot reach server: ' + err.message }; }
   };
 
   const register = async (name, email, password) => {
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
       const data = await res.json();
       if (res.ok) { localStorage.setItem('c4h_token', data.token); setUser(data.user); return { success: true }; }
       return { success: false, error: data.error || 'Registration failed' };
-    } catch { return { success: false, error: 'Cannot reach server.' }; }
+    } catch (err) { return { success: false, error: 'Cannot reach server: ' + err.message }; }
   };
 
   const logout = () => { localStorage.removeItem('c4h_token'); setUser(null); };
